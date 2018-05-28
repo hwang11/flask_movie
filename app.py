@@ -5,7 +5,7 @@ from flask import render_template,request,redirect,url_for
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://hwang:1234:@localhost/mydatabase'
 db = SQLAlchemy(app)
-
+app.debug = True
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True)
@@ -20,9 +20,14 @@ class User(db.Model):
 
 @app.route('/')
 def index():
-    return render_template('add_user.html')
+    myUser = User.query.all() #user테이블에 담긴 데이터 전부
+    oneItem = User.query.filter_by(username="sah").first() #username이 sah인 애의 심플객체? 모르겟...첫번째 값이라는 말은아닌듯? ruby의 find_by와 동일
+    return render_template('add_user.html', myUser=myUser, oneItem=oneItem)#myUser라는 변수에 넣고, 뷰에 전달
 
-
+@app.route('/profile/<username>')
+def profile(username):
+    user = User.query.filter_by(username=username).first() 
+    return render_template('profile.html', user=user)#myUser라는 변수에 넣고, 뷰에 전달
 
 @app.route('/post_user', methods=['POST'])
 def post_user():
