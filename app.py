@@ -39,7 +39,7 @@ security = Security(app, user_datastore)
 
 @app.route('/')
 def index():
-    return render_template('add_user.html')
+    return render_template('index.html')
 
 @app.route('/profile/<username>')
 def profile(email):
