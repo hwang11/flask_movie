@@ -1,33 +1,50 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask import render_template,request,redirect,url_for
+from flask_security import Security, SQLAlchemyUserDatastore, UserMixin, RoleMixin, login_required
+from sqlalchemy.exc import IntegrityError
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://hwang:1234:@localhost/mydatabase'
-db = SQLAlchemy(app)
+app.config['SECRET_KEY'] = 'super-secret'
+app.config['SECURITY_REGISTERABLE'] = True
+
+
 app.debug = True
-class User(db.Model):
+db = SQLAlchemy(app)
+
+# Define models
+roles_users = db.Table('roles_users',
+        db.Column('user_id', db.Integer(), db.ForeignKey('user.id')),
+        db.Column('role_id', db.Integer(), db.ForeignKey('role.id')))
+
+class Role(db.Model, RoleMixin):
+    id = db.Column(db.Integer(), primary_key=True)
+    name = db.Column(db.String(80), unique=True)
+    description = db.Column(db.String(255))
+
+class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True)
-    email = db.Column(db.String(120),unique=True)
+    email = db.Column(db.String(255), unique=True)
+    password = db.Column(db.String(255))
+    active = db.Column(db.Boolean())
+    confirmed_at = db.Column(db.DateTime())
+    roles = db.relationship('Role', secondary=roles_users,
+                            backref=db.backref('users', lazy='dynamic'))
 
-    def __init__(self, username, email):
-        self.username = username
-        self.email = email
+# Setup Flask-Security
+user_datastore = SQLAlchemyUserDatastore(db, User, Role)
+security = Security(app, user_datastore)
 
-    def __repr__(self):
-        return '<User %r>' % self.username
 
 @app.route('/')
 def index():
-    myUser = User.query.all() #user테이블에 담긴 데이터 전부
-    oneItem = User.query.filter_by(username="sah").first() #username이 sah인 애의 심플객체? 모르겟...첫번째 값이라는 말은아닌듯? ruby의 find_by와 동일
-    return render_template('add_user.html', myUser=myUser, oneItem=oneItem)#myUser라는 변수에 넣고, 뷰에 전달
+    return render_template('add_user.html')
 
 @app.route('/profile/<username>')
-def profile(username):
-    user = User.query.filter_by(username=username).first() 
-    return render_template('profile.html', user=user)#myUser라는 변수에 넣고, 뷰에 전달
+def profile(email):
+    user = User.query.filter_by(email=email).first() 
+    return render_template('profile.html', user=user)
 
 @app.route('/post_user', methods=['POST'])
 def post_user():
